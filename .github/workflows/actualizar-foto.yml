@@ -1,0 +1,45 @@
+name: Actualizar foto ejecutiva
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - profile.b64
+      - .github/workflows/actualizar-foto.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  actualizar-foto:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Crear imagen y actualizar CV
+        shell: bash
+        run: |
+          base64 --decode profile.b64 > profile.jpg
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('index.html')
+          html = path.read_text(encoding='utf-8')
+          old = 'https://avatars.githubusercontent.com/u/19506866?v=4'
+          if old not in html and 'src="profile.jpg"' not in html:
+              raise SystemExit('No se encontro la referencia de la foto actual en index.html')
+          html = html.replace(old, 'profile.jpg')
+          path.write_text(html, encoding='utf-8')
+          PY
+          git rm profile.b64
+
+      - name: Publicar actualización
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html profile.jpg
+          git commit -m "Actualizar foto ejecutiva del CV [skip ci]"
+          git push
